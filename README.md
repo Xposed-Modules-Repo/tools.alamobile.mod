@@ -3,13 +3,13 @@
 <p align="center">
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License">
   <img src="https://img.shields.io/badge/LSPosed%20API-102-green" alt="LSPosed API">
-  <img src="https://img.shields.io/badge/version-1.0.0%20Beta%204-orange" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.0.0%20Beta%205-orange" alt="Version">
   <img src="https://img.shields.io/badge/target-Ala%20Mobile-red" alt="Target">
 </p>
 
 <p align="center">
   <strong>Ala Mobile 的体验增强 LSPosed 模块</strong><br>
-  线性踏板操控 &middot; 原生 TC 控制 &middot; 音乐替换 &middot; 内购解锁
+  线性踏板操控 &middot; 原生 TC 控制 &middot; 音乐替换 &middot; V10 引擎声浪 &middot; 内购解锁
 </p>
 
 ---
@@ -66,6 +66,11 @@ miuix 风格三页布局（概览 / 配置 / 设置），支持深色模式：
 - 默认开启。离开主菜单自动暂停，返回自动恢复
 - 通过 native hook 静音游戏原生 `AudioSource.set_volume`，不依赖游戏设置
 
+#### V10 引擎声浪
+- 将开场动画背景音替换为 **V10 引擎声浪**
+- 默认关闭。单次播放，播完即停
+- 通过 native hook 静音游戏开场 `introSound`（真 `AudioSource.set_volume`），独立于主菜单音乐替换
+
 #### 布局编辑
 - 长按工具按钮进入编辑模式
 - 拖拽移动 + 四角缩放各 overlay 位置
@@ -104,6 +109,12 @@ miuix 风格三页布局（概览 / 配置 / 设置），支持深色模式：
 - 判定依据 `service.frameworkName == "LSPosed"`：LSPosed daemon 只在模块启用时推 binder，绑定即激活（参照 AdClose `onServiceBind` 思路）
 - NPatch 等非 root 框架（`frameworkName == "NPatch"`，API 101）不算 LSPOSED，自动弹窗确认（LSPatch/NPatch/FPA）
 
+#### 游戏版本检测
+- 概览页标题上方显示官版/共存版版本检测胶囊（每次启动自动检测）
+- 用 `<queries>` 声明两个游戏包名，`getPackageInfo` 静默查询，无需运行时权限
+- 已适配（8.0.4）显示绿色胶囊，未适配显示红色胶囊，未安装显示黄色胶囊
+- 下滑收缩时胶囊即时隐藏，上滑恢复后延迟渐显，避免与居中小标题重叠
+
 #### 现代 UI
 - Miuix 风格三页布局（概览 / 配置 / 设置），支持深色模式
 - 顶栏/底栏毛玻璃（blurRadius=12f），下滑顶栏折叠
@@ -123,10 +134,21 @@ miuix 风格三页布局（概览 / 配置 / 设置），支持深色模式：
 - 强制确认弹窗，按版本号持久化（当前 v2），条款更新重新弹窗
 - 存于模块进程 `filesDir`，`pm clear` / 卸载重装自动清除，语义正确
 - 协议同意前激活弹窗不可见，保证协议优先
+- 协议弹窗需滚到底部阅读完才能点击「同意」
 
 #### vivo/Android 16 兼容
 - 所有重操作（ShadowHook 初始化、JNI 调用、Service 绑定）延迟到 `Handler.post` 下一主循环
 - 避开 `createOrUpdateClassLoaderLocked` 内部 Resources 未初始化时序窗口
+
+#### 检查更新
+- 启动时自动检查 GitHub Releases（官方 + 镜像站竞速），有新版本自动弹窗
+- 稳定版通道仅检查正式 Release，预览版通道同时检查 Pre-release
+- Release Note 轻量 Markdown 渲染，下载进度实时显示，下载完成调起安装器
+- 支持「跳过该版本」（仅影响自动弹窗，手动检查不受限）和「清除跳过更新标记」
+- 同版本已下载的 APK 不重复下载，直接调起安装器；启动时自动清理旧版本残留 APK
+
+#### 支持开发
+- 概览页「支持开发」卡片，展示收款码，可保存到相册
 
 ### 🚧 开发中
 
@@ -166,34 +188,37 @@ miuix 风格三页布局（概览 / 配置 / 设置），支持深色模式：
 
 ### 概览页
 - 模块激活状态卡片（已激活 / 未激活，绿/红配色）
+- 游戏版本检测胶囊：官版与共存版适配状态（已适配绿色 / 未适配红色 / 未安装黄色）
 - 设备信息：版本名称、版本号、Android 版本、厂商、型号
-- 链接：GitHub Releases、QQ 群、GitHub 源代码
+- 链接：GitHub Releases、QQ 群（直接拉起 QQ App）、GitHub 源代码
+- 支持开发卡片：展示收款码，可保存到相册
 
 ### 配置页
 
 | 分类 | 功能项 | 说明 |
 |---|---|---|
-| 功能开关 | 解锁付费内容 | 强制解锁 DLC 和 IAP（默认关闭） |
+| 游戏原生功能控制 | 解锁付费内容 | 强制解锁 DLC 和 IAP（默认关闭） |
 | | 牵引力控制（TC） | 启用原生 TC（默认开启） |
-| | 替换主菜单音乐 | 更换为 Hans Zimmer - F1（默认开启） |
-| Overlay 控件 | 显示悬浮窗 | 在游戏中显示踏板和换挡 overlay（默认开启） |
-| | 线性踏板 | 拓扑选择：关闭 / 单踏板 / 双踏板 |
+| Overlay 控件 | 线性踏板 | 拓扑选择：关闭 / 单踏板 / 双踏板 |
 | | 死区（单踏板） | 0-20%，踏板过渡区域附近的无效范围 |
 | | 过渡点（单踏板） | 20-80%，油门与刹车区域的分界线 |
 | | 刹车过渡点（双踏板） | 0-20%，刹车优先仲裁的触发阈值 |
 | | 刹车踏板方向反转（双踏板） | 切换填充方向 |
-| 响应曲线 | 油门响应曲线 | 线性 / 自定义（多点控制点） |
-| | 刹车响应曲线 | 线性 / 自定义（多点控制点） |
+| 响应曲线 | 油门响应曲线 | 线性 / 自定义（多点控制点），线性踏板关闭时整组收回 |
+| | 刹车响应曲线 | 线性 / 自定义（多点控制点），线性踏板关闭时整组收回 |
+| 杂项 | 替换主菜单音乐 | 更换为 Hans Zimmer - F1（默认开启） |
+| | 替换开场动画背景音 | 更改为 V10 引擎声浪（默认关闭） |
 
 ### 设置页
 
 | 功能项 | 说明 |
 |---|---|
+| 模块更新通道 | 稳定版（仅正式 Release）或预览版（含 Pre-release） |
 | 启用日志 | 记录模块运行日志 |
 | 导出并分享日志 | 导出当前日志文件并分享 |
-| 清除激活标记 | 删除 Non-root 确认标记与 EULA 标记（filesDir，pm clear 可清） |
+| 清除激活标记 | 删除 Non-root 确认标记与旧版激活残留（filesDir，pm clear 可清）；不碰 EULA 同意状态 |
+| 清除跳过更新标记 | 恢复被跳过版本的自动弹窗提示 |
 | 用户协议 | 重新查看并确认用户协议 |
-| 关于 | 版本信息 |
 
 ---
 
@@ -230,6 +255,7 @@ Ala Mobile Tool (LSPosed 模块 APK)
 ├── OverlayManager          # WindowManager 覆盖层管理
 ├── OverlayEditView         # 编辑模式拖拽/缩放层
 ├── MusicPlayer             # 主菜单音乐播放器（MediaPlayer + 轮询）
+├── IntroSoundPlayer        # V10 引擎声浪播放器（MediaPlayer + 轮询）
 ├── ConfigProvider          # 跨进程配置 IPC（ContentProvider）
 ├── ConfigReceiver          # 配置广播接收器
 ├── BillingHook             # Java 层内购解锁（Xposed hook）
@@ -240,7 +266,8 @@ Ala Mobile Tool (LSPosed 模块 APK)
     ├── pedal_hook          # 油门/刹车/换挡 + writer 线程
     ├── drs_hook            # DRS 拦截
     ├── unlock_hook         # BillingManager 解锁（主路径）
-    └── music_hook          # 主菜单音乐静音 + 心跳检测
+    ├── music_hook          # 主菜单音乐静音 + 心跳检测
+    └── intro_hook          # 开场 V10 引擎声：静音 introSound + one-shot 信号
 ```
 
 **技术栈：**
@@ -301,6 +328,9 @@ tools/run-il2cpp-dumper.sh
 
 <details>
 <summary>展开查看</summary>
+
+**v1.0.0 Beta 5**（2026-08-18）
+> 新增 V10 引擎声浪替换开场动画背景音、应用内检查更新（GitHub 官方+镜像竞速，Markdown Release Note 渲染，下载+安装+跳过版本）、更新通道设置（稳定版/预览版）、概览页游戏版本检测胶囊（官版/共存版适配状态）；恢复 EULA 启动门控（滚到底才能同意）；弹窗退出动画；支持开发卡片+捐赠弹窗；QQ 群卡片直接拉起 QQ App。配置页重组：功能开关改名游戏原生功能控制（仅解锁+TC），主菜单音乐与 V10 声浪移至杂项分类；设置页重组为模块更新通道/日志/激活协议三组，新增清除跳过更新标记；线性踏板关闭时响应曲线整组收回；移除显示悬浮窗开关。修复弹窗系统返回键不关闭直接退桌面（删除手动 NavigationEventDispatcherOwner）、清除激活标记误清 EULA 同意状态。
 
 **v1.0.0 Beta 4**（2026-08-17）
 > 新增自定义油门/刹车响应曲线编辑器（多点控制点 + 保单调三次样条）；修复配置修改后不立即生效（daemon 旧值覆盖新配置）、切换踏板模式后位置/大小丢失、native 库加载失败（移除 useLegacyPackaging）；适配 Ala Mobile 8.0.4（versionCode 200146，8.0.0 用户收到不支持警告）；底栏快速切换与切页掉帧修复。CI 自动构建 + tag 触发 Pre-release。
